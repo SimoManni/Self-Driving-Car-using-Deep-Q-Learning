@@ -1,20 +1,26 @@
 import pygame
 import numpy as np
 
-class Car(pygame.sprite.Sprite):
-    def __init__(self, car_start_pos, contour_lines):
-        super().__init__()
-
+class Car():
+    def __init__(self, screen, car_start_pos, contour_points):
+        self.screen = screen
         # Load image and resize
         car_image = pygame.image.load('car.png')
-        self.image = pygame.transform.scale(car_image, (50, 50))
+        self.image = pygame.transform.scale(car_image, (20, 40))
         self.original_image = self.image
         self.rect = self.image.get_rect()
 
         # Initial position and velocity
         self.rect.center = car_start_pos
         self.speed = 0
-        self.angle = 35
+        self.angle = 0
+
+        self.corners = np.array([
+                [-self.rect.width / 2, -self.rect.height / 2],  # Top-left
+                [self.rect.width / 2, -self.rect.height / 2],   # Top-right
+                [self.rect.width / 2, self.rect.height / 2],    # Bottom-right
+                [-self.rect.width / 2, self.rect.height / 2]    # Bottom-left
+            ]) + np.array(self.rect.center)
 
         # Parameters
         self.acceleration = 0.2
@@ -23,13 +29,33 @@ class Car(pygame.sprite.Sprite):
         self.max_speed = 5
 
         # Line segments of the track
-        self.contour_lines = np.vstack(contour_lines)
+        self.contour_points = contour_points
+        self.contour_lines = self.get_line_segments()
+
+
+    def rotate(self):
+        angle = self.angle * np.pi / 180
+
+        # Calculate rotation matrix
+        rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)],
+                                    [np.sin(angle), np.cos(angle)]])
+
+        vertices_rel = np.array([
+                        [-self.rect.width / 2, -self.rect.height / 2],  # Top-left
+                        [self.rect.width / 2, -self.rect.height / 2],   # Top-right
+                        [self.rect.width / 2, self.rect.height / 2],    # Bottom-right
+                        [-self.rect.width / 2, self.rect.height / 2]    # Bottom-left
+                    ])
+        rotated_vertices_rel = np.dot(vertices_rel, rotation_matrix)
+        rotated_vertices = rotated_vertices_rel + np.array(self.rect.center)
+
+        self.corners = rotated_vertices
 
     def update(self, keys):
         # Handle rotation
         if keys[pygame.K_LEFT] and self.speed != 0:
             self.angle += 5
-        if keys[pygame.K_RIGHT] and self.speed != 0:
+        if keys[pygame.K_RIGHT]:
             self.angle -= 5
 
         # Handle acceleration and braking
@@ -56,6 +82,7 @@ class Car(pygame.sprite.Sprite):
         # Update position based on speed and angle
         self.rect.x += self.speed * pygame.math.Vector2(0, -1).rotate(-self.angle).x
         self.rect.y += self.speed * pygame.math.Vector2(0, -1).rotate(-self.angle).y
+        self.rotate()
 
     def draw(self, surface):
         rotated_image = pygame.transform.rotate(self.original_image, self.angle)
@@ -67,50 +94,72 @@ class Car(pygame.sprite.Sprite):
         self.speed = 0
         self.angle = 0
 
-    # def check_collision(self):
-    #     top_left = self.rect.topleft
-    #     top_right = self.rect.topright
-    #     bottom_left = self.rect.bottomleft
-    #     bottom_right = self.rect.bottomright
-    #
-    #     # Top edge
-    #     m_top = (top_right[1] - top_left[1]) / (top_right[0] - top_left[0])
-    #     b_top = top_left[1] - m_top * top_left[0]
-    #
-    #     # Right edge
-    #     if bottom_right[0] - top_right[0] != 0:
-    #         m_right = (bottom_right[1] - top_right[1]) / (bottom_right[0] - top_right[0])
-    #         b_right = top_right[1] - m_right * top_right[0]
-    #     else:
-    #         m_right = 1e10
-    #         b_right = -1e10
-    #
-    #     # Bottom edge
-    #     m_bottom = (bottom_right[1] - bottom_left[1]) / (bottom_right[0] - bottom_left[0])
-    #     b_bottom = bottom_left[1] - m_bottom * bottom_left[0]
-    #
-    #     # Left edge
-    #     if bottom_left[0] - top_left[0] != 0:
-    #         m_left = (bottom_left[1] - top_left[1]) / (bottom_left[0] - top_left[0])
-    #         b_left = top_left[1] - m_left * top_left[0]
-    #     else:
-    #         m_left = -1e10
-    #         b_left = 1e10
-    #
-    #     distances = self._lines_intersection([m_bottom, b_bottom])
-    #     if np.min(distances) <= self.rect.width / 2:
-    #         print('Collision')
-    # def _lines_intersection(self, line_coeff):
-    #     contour_line_coeff = self.contour_lines
-    #     m_diff = line_coeff[0] - contour_line_coeff[:, 0]
-    #     nonzero_indices = np.nonzero(m_diff)[0]
-    #     x_inter = (contour_line_coeff[nonzero_indices, 1] - line_coeff[1]) / m_diff[nonzero_indices]
-    #     y_inter = line_coeff[0] * x_inter + line_coeff[1]
-    #
-    #     points = np.column_stack((x_inter, y_inter)).astype(np.int32)
-    #     for point in points:
-    #         pygame.draw.circle(screen, (255, 0, 0), point, 5)
-    #     distances_inter = np.sqrt(np.sum(np.square(points - self.rect.center), axis=1))
-    #     distances_parallel = np.abs(contour_line_coeff[~nonzero_indices, 1] - line_coeff[1])
-    #
-    #     return np.concatenate((distances_inter, distances_parallel))
+    def check_collision(self):
+
+
+        corners = np.array(self.corners, dtype='int32')
+        top_left = corners[0]
+        top_right = corners[1]
+        bottom_right = corners[2]
+        bottom_left = corners[3]
+
+        lines = np.array([
+            np.concatenate([top_left, top_right]),  # Line from top_left to top_right
+            np.concatenate([top_right, bottom_right]),  # Line from top_right to bottom_right
+            np.concatenate([bottom_right, bottom_left]),  # Line from bottom_right to bottom_left
+            np.concatenate([bottom_left, top_left])  # Line from bottom_left to top_left
+        ])
+
+        # Calculate denominator for all pairs of lines
+        for line in lines:
+            den = ((self.contour_lines[:, 0] - self.contour_lines[:, 2]) *
+                   (line[1] - line[3]) -
+                   (self.contour_lines[:, 1] - self.contour_lines[:, 3]) *
+                   (line[0] - line[2]))
+
+            # Find indices where den is not zero (to avoid division by zero)
+            non_zero_indices = np.nonzero(den)
+
+            # Calculate t and u for all pairs of lines where den is not zero
+            t_numerators = ((self.contour_lines[non_zero_indices, 0] - line[0]) *
+                            (line[1] - line[3]) -
+                            (self.contour_lines[non_zero_indices, 1] - line[1]) *
+                            (line[0] - line[2]))
+
+            t_denominators = den[non_zero_indices]
+
+            u_numerators = -((self.contour_lines[non_zero_indices, 0] - self.contour_lines[non_zero_indices, 2]) *
+                             (self.contour_lines[non_zero_indices, 1] - line[1]) -
+                             (self.contour_lines[non_zero_indices, 1] - self.contour_lines[non_zero_indices, 3]) *
+                             (self.contour_lines[non_zero_indices, 0] - line[0]))
+
+            u_denominators = den[non_zero_indices]
+
+            # Calculate t and u values
+            t = t_numerators / t_denominators
+            u = u_numerators / u_denominators
+
+            # Check collision condition using vectorized operations
+            collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
+
+            # Print collisions
+            if np.any(collision_mask):
+                print('Collision detected')
+
+
+
+
+    def get_line_segments(self):
+        # Function definition for creating lines and computing coefficients
+        def extract_line_segments(contours):
+            line_segments = []
+            for i in range(len(contours) - 1):
+                line_segments.append(np.concatenate((contours[i], contours[i + 1])))
+            line_segments.append(np.concatenate((contours[-1], contours[0])))
+            return np.array(line_segments)
+
+
+        line_segments_outer = extract_line_segments(self.contour_points[0])
+        line_segments_inner = extract_line_segments(self.contour_points[1])
+
+        return np.vstack((line_segments_outer, line_segments_inner))

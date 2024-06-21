@@ -2,7 +2,7 @@ import pygame
 import sys
 import numpy as np
 
-from settings import WIDTH, HEIGHT
+from settings import WIDTH, HEIGHT, car_start_pos
 from Car import Car
 from Track import Track
 
@@ -13,12 +13,8 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Simple Car Game")
 
-contour_points_outer = np.loadtxt('contour_points_outer.txt')
-contour_points_inner = np.loadtxt('contour_points_inner.txt')
-car_start_pos = (WIDTH // 7, 4 * HEIGHT // 5)
-
-car = Car(car_start_pos, [contour_points_outer, contour_points_inner])
 track = Track()
+car = Car(screen, car_start_pos, track.contour_points)
 
 # Main game loop
 running = True
@@ -42,6 +38,7 @@ while running:
 
     # Draw car
     car.draw(screen)
+    car.check_collision()
 
     # Update display
     pygame.display.flip()
