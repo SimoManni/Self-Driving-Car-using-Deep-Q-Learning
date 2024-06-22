@@ -35,6 +35,7 @@ while running:
     # Draw track
     track.draw(screen)
     track.draw_lines(screen)
+    car.perceive()
 
     # Draw car
     car.draw(screen)

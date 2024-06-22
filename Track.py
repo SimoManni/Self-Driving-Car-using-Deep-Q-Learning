@@ -18,6 +18,8 @@ class Track:
         if self.vis:
             pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[0], 5)
             pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[1], 5)
+            for point in np.vstack(self.contour_points):
+                pygame.draw.circle(screen, (0, 0, 255), point, 5)
 
     def barriers(self):
         image = cv2.imread('track.png')

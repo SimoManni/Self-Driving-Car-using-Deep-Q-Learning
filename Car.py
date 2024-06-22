@@ -31,6 +31,7 @@ class Car():
         # Line segments of the track
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
+        self.contour_lines_coeffs = self.get_line_coeff()
 
 
     def rotate(self):
@@ -95,8 +96,6 @@ class Car():
         self.angle = 0
 
     def check_collision(self):
-
-
         corners = np.array(self.corners, dtype='int32')
         top_left = corners[0]
         top_right = corners[1]
@@ -135,22 +134,88 @@ class Car():
 
             u_denominators = den[non_zero_indices]
 
-            # Calculate t and u values
             t = t_numerators / t_denominators
             u = u_numerators / u_denominators
 
-            # Check collision condition using vectorized operations
             collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
 
             # Print collisions
             if np.any(collision_mask):
                 print('Collision detected')
 
+    def perceive(self):
+
+        corners = self.corners[:2]
+        midpoints = np.zeros((3, 2))
+        midpoints[0] = (self.corners[0] + self.corners[1]) / 2
+        midpoints[1] = (self.corners[1] + self.corners[2]) / 2
+        midpoints[2] = (self.corners[3] + self.corners[0]) / 2
+        points = np.vstack((corners, midpoints))
+
+        center = self.rect.center
+        extension_factor = 7
+        vectors = points - center
+        extended_vectors = vectors * extension_factor
+        extended_points = center + extended_vectors
+
+        for point in extended_points:
+            inter_point = self.get_line_intersection(np.concatenate((center, point)))
+            if inter_point is not None:
+                pygame.draw.line(self.screen, (0, 255, 0), center, inter_point, 5)
+                pygame.draw.circle(self.screen, (0, 0, 255), inter_point, 5)
+            else:
+                pygame.draw.line(self.screen, (255, 255, 0), center, point, 5)
+                pygame.draw.circle(self.screen, (255, 0, 255), point, 5)
+
+
+    def get_line_intersection(self, line):
+        x3, y3, x4, y4 = line
+        x1 = self.contour_lines[:, 0]
+        y1 = self.contour_lines[:, 1]
+        x2 = self.contour_lines[:, 2]
+        y2 = self.contour_lines[:, 3]
+
+        # Find denominator
+        den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        valid = den != 0
+
+        # Exclude parallel lines
+        x1 = x1[valid]
+        y1 = y1[valid]
+        x2 = x2[valid]
+        y2 = y2[valid]
+        den = den[valid]
+
+        # Compute intersection points
+        t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den
+        u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den
+        valid_t = (t > 0) & (t < 1)
+        valid_u = (u > 0) & (u < 1)
+        valid_intersections = valid_t & valid_u
+
+        x1 = x1[valid_intersections]
+        y1 = y1[valid_intersections]
+        x2 = x2[valid_intersections]
+        y2 = y2[valid_intersections]
+        t = t[valid_intersections]
+
+        if len(t) == 0:
+            return None
+        else:
+            pts = np.vstack((x1 + t * (x2 - x1), y1 + t * (y2 - y1))).T
+            pts = np.floor(pts).astype(int)
+            if len(pts) == 1:
+                return tuple(pts[0])
+            else:
+                distances = np.sqrt(np.sum(np.square(pts - self.rect.center), axis=1))
+                idx = np.argmin(distances)
+                return tuple(pts[idx])
+
 
 
 
     def get_line_segments(self):
-        # Function definition for creating lines and computing coefficients
+        # Function definition for creating lines
         def extract_line_segments(contours):
             line_segments = []
             for i in range(len(contours) - 1):
@@ -163,3 +228,20 @@ class Car():
         line_segments_inner = extract_line_segments(self.contour_points[1])
 
         return np.vstack((line_segments_outer, line_segments_inner))
+
+    def get_line_coeff(self):
+
+        line_coeffs = []
+        for (x1, y1, x2, y2) in self.contour_lines:
+            if x2 - x1 != 0:
+                m = (y2 - y1) / (x2 - x1)
+                b = y1 - m * x1
+            else:
+                m = 1e10
+                b = -1e10
+            line_coeffs.append([m, b])
+
+        return np.array(line_coeffs)
+
+
+
