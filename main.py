@@ -4,7 +4,7 @@ import numpy as np
 
 from settings import WIDTH, HEIGHT, car_start_pos
 from Car import Car
-from Track import Track
+from RacingEnvironment import RacingEnvironment
 
 # Initialize Pygame
 pygame.init()
@@ -13,8 +13,7 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Simple Car Game")
 
-track = Track()
-car = Car(screen, car_start_pos, track.contour_points)
+RaceEnv = RacingEnvironment()
 
 # Main game loop
 running = True
@@ -23,29 +22,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    # Get key states
-    keys = pygame.key.get_pressed()
-
-    # Update car
-    car.update(keys)
-
-    # Clear screen
-    screen.fill((0, 0, 0))
-
-    # Draw track
-    track.draw(screen)
-    track.draw_lines(screen)
-    car.perceive()
-
-    # Draw car
-    car.draw(screen)
-    car.check_collision()
-
-    # Update display
-    pygame.display.flip()
-
-    # Cap the frame rate
-    pygame.time.Clock().tick(30)
+    RaceEnv.update()
 
 # Quit Pygame
 pygame.quit()

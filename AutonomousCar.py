@@ -1,8 +1,8 @@
 import pygame
 import numpy as np
 
-class Car():
-    def __init__(self, screen, car_start_pos, contour_points, checkpoints):
+class AutonomousCar():
+    def __init__(self, screen, car_start_pos, contour_points):
         self.screen = screen
         # Load image and resize
         car_image = pygame.image.load('car.png')
@@ -32,7 +32,6 @@ class Car():
         # Line segments of the track
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
-        self.checkpoints = checkpoints
 
 
     def rotate(self):
@@ -53,25 +52,57 @@ class Car():
 
         self.corners = rotated_vertices
 
-    def update(self, keys):
-        # Handle rotation
-        if keys[pygame.K_LEFT] and self.speed != 0:
-            self.angle += 5
-        if keys[pygame.K_RIGHT] and self.speed != 0:
-            self.angle -= 5
-
-        # Handle acceleration and braking
-        if keys[pygame.K_UP]:
+    def update(self, action):
+        if action == 1:
+            # Accelerate forward
             self.speed += self.acceleration
             if self.speed > self.max_speed:
                 self.speed = self.max_speed
-        if keys[pygame.K_DOWN]:
-            self.speed -= self.brake_deceleration
-            if self.speed < -self.max_speed / 2:  # Allow some reverse speed
-                self.speed = -self.max_speed / 2
 
-        # Apply friction to gradually slow down the car
-        if not keys[pygame.K_UP] and not keys[pygame.K_DOWN]:
+        elif action == 2:
+            # Accelerate forward and rotate right
+            self.speed += self.acceleration
+            if self.speed > self.max_speed:
+                self.speed = self.max_speed
+            if self.speed != 0:
+                self.angle -= 5
+        elif action == 3:
+            # Accelerate forward and rotate left
+            self.speed += self.acceleration
+            if self.speed > self.max_speed:
+                self.speed = self.max_speed
+            if self.speed != 0:
+                self.angle += 5
+        elif action == 4:
+            # Turn right
+            if self.speed != 0:
+                self.angle -= 5
+        elif action == 5:
+            # Turn left
+            if self.speed != 0:
+                self.angle += 5
+        elif action == 6:
+            # Decelerate
+            self.speed -= self.brake_deceleration
+            if self.speed < -self.max_speed / 2:
+                self.speed = -self.max_speed / 2
+        elif action == 7:
+            # Decelerate and turn right
+            self.speed -= self.brake_deceleration
+            if self.speed < -self.max_speed / 2:
+                self.speed = -self.max_speed / 2
+            if self.speed != 0:
+                self.angle -= 5
+        elif action == 8:
+            # Decelerate and turn left
+            self.speed -= self.brake_deceleration
+            if self.speed < -self.max_speed / 2:
+                self.speed = -self.max_speed / 2
+            if self.speed != 0:
+                self.angle += 5
+
+        # Apply friction to gradually slow down the car if gas is not applied
+        if action == 4 or action == 5:
             if self.speed > 0:
                 self.speed -= self.friction
                 if self.speed < 0:
@@ -86,10 +117,15 @@ class Car():
         self.rect.y += self.speed * pygame.math.Vector2(0, -1).rotate(-self.angle).y
         self.rotate()
 
-    def draw(self):
+    def reset(self):
+        self.rect.center = self.car_start_pos
+        self.speed = 0
+        self.angle = 0
+
+    def draw(self, surface):
         rotated_image = pygame.transform.rotate(self.original_image, self.angle)
         rect = rotated_image.get_rect(center=self.rect.center)
-        self.screen.blit(rotated_image, rect.topleft)
+        surface.blit(rotated_image, rect.topleft)
 
     def reset(self, car_start_pos):
         self.rect.center = car_start_pos
@@ -168,49 +204,6 @@ class Car():
                 pygame.draw.line(self.screen, (255, 255, 0), center, point, 5)
                 pygame.draw.circle(self.screen, (255, 0, 255), point, 5)
 
-    def checkpoint(self):
-        corners = np.array(self.corners, dtype='int32')
-        top_left = corners[0]
-        top_right = corners[1]
-        bottom_right = corners[2]
-        bottom_left = corners[3]
-
-        lines = np.array([
-            np.concatenate([top_right, bottom_right]),  # Line from top_right to bottom_right
-            np.concatenate([bottom_left, top_left])  # Line from bottom_left to top_left
-        ])
-
-        for line in lines:
-            den = ((self.checkpoints[:, 0] - self.checkpoints[:, 2]) *
-                   (line[1] - line[3]) -
-                   (self.checkpoints[:, 1] - self.checkpoints[:, 3]) *
-                   (line[0] - line[2]))
-
-            # Find indices where den is not zero (to avoid division by zero)
-            non_zero_indices = np.nonzero(den)
-
-            # Calculate t and u for all pairs of lines where den is not zero
-            t_numerators = ((self.checkpoints[non_zero_indices, 0] - line[0]) *
-                            (line[1] - line[3]) -
-                            (self.checkpoints[non_zero_indices, 1] - line[1]) *
-                            (line[0] - line[2]))
-
-            t_denominators = den[non_zero_indices]
-
-            u_numerators = -((self.checkpoints[non_zero_indices, 0] - self.checkpoints[non_zero_indices, 2]) *
-                             (self.checkpoints[non_zero_indices, 1] - line[1]) -
-                             (self.checkpoints[non_zero_indices, 1] - self.checkpoints[non_zero_indices, 3]) *
-                             (self.checkpoints[non_zero_indices, 0] - line[0]))
-
-            u_denominators = den[non_zero_indices]
-
-            t = t_numerators / t_denominators
-            u = u_numerators / u_denominators
-
-            collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
-            if np.any(collision_mask):
-                print('Reward')
-                break
 
     def get_line_intersection(self, line):
         x3, y3, x4, y4 = line
@@ -233,8 +226,8 @@ class Car():
         # Compute intersection points
         t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den
         u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den
-        valid_t = (t >= 0) & (t <= 1)
-        valid_u = (u >= 0) & (u <= 1)
+        valid_t = (t > 0) & (t < 1)
+        valid_u = (u > 0) & (u < 1)
         valid_intersections = valid_t & valid_u
 
         x1 = x1[valid_intersections]
