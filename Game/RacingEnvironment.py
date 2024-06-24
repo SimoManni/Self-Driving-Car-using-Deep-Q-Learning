@@ -2,8 +2,8 @@ import pygame
 import numpy as np
 import cv2
 
-from AutonomousCar import AutonomousCar
-from settings import *
+from Car import Car
+from settings import WIDTH, HEIGHT, car_start_pos
 
 class RacingEnvironment:
     def __init__(self):
@@ -16,40 +16,26 @@ class RacingEnvironment:
         self.contour_points = self.barriers()
         self.checkpoints = self.define_checkpoints()
 
-        self.car = AutonomousCar(self.screen, car_start_pos, self.contour_points, self.checkpoints)
+        self.car = Car(self.screen, car_start_pos, self.contour_points, self.checkpoints)
 
         self.VIS_BARRIERS = True
         self.VIS_CHECKPOINTS = True
 
-    def step(self, action):
-
-        done = False
-        self.car.update(action)
-        reward = LIFE_REWARD
-
-        # Check if car passes checkpoint
-        if self.car.score():
-            reward += GOAL_REWARD
-
-        # Check if collision occured
-        if self.car.check_collision():
-            reward -= PENALTY
-            done = True
-
-        new_state = self.car.perceive()
-
-        if done:
-            new_state = None
-
-        return new_state, reward, done
-
-    def reset(self):
+    def update(self):
+        keys = pygame.key.get_pressed()
+        self.car.update(keys)
         self.screen.fill((0, 0, 0))
-        self.car.reset()
-    def close(self):
-        pygame.quit()
 
-# Functions for visualization
+        self.draw()
+
+        self.car.perceive()
+        self.car.draw()
+        self.car.check_collision()
+        self.car.checkpoint()
+
+        pygame.display.flip()
+        pygame.time.Clock().tick(30)
+
     def draw(self):
         self.screen.blit(self.image, (0, 0))
         if self.VIS_BARRIERS:
@@ -65,31 +51,6 @@ class RacingEnvironment:
     def draw_checkpoints(self):
         for line in self.checkpoints:
             pygame.draw.line(self.screen, (255, 0, 0), line[:2], line[2:], 5)
-
-# Functions to define barriers and checkpoints
-    def barriers(self):
-        image = cv2.imread('track.png')
-        image = cv2.resize(image, (800, 600))
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Apply Canny edge detection
-        edges = cv2.Canny(gray, 50, 150)
-
-        # Extract contours with minimum length to prevent other lines except for the contours of the track to be selected
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        min_contour_length = 200
-        long_contours = [contour for contour in contours if cv2.arcLength(contour, True) > min_contour_length]
-
-        # Outer and inner contour of the track
-        epsilon_outer = 0.001 * cv2.arcLength(long_contours[0], True)
-        approx_contours_outer = cv2.approxPolyDP(long_contours[0], epsilon_outer, True)
-        approx_contours_outer = np.squeeze(approx_contours_outer)
-
-        epsilon_inner = 0.001 * cv2.arcLength(long_contours[-1], True)
-        approx_contours_inner = cv2.approxPolyDP(long_contours[-1], epsilon_inner, True)
-        approx_contours_inner = np.squeeze(approx_contours_inner)
-
-        return [approx_contours_outer, approx_contours_inner]
 
     def define_checkpoints(self):
         return np.array([[184, 550, 200, 470],
@@ -110,3 +71,27 @@ class RacingEnvironment:
                              [595, 464, 633, 532],
                              [485, 472, 489, 547],
                              [314, 480, 312, 558]])
+
+    def barriers(self):
+        image = cv2.imread('track.png')
+        image = cv2.resize(image, (800, 600))
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Apply Canny edge detection
+        edges = cv2.Canny(gray, 50, 150)
+
+        # Extract contours with minimum length to prevent other lines except for the contours of the track to be selected
+        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        min_contour_length = 200
+        long_contours = [contour for contour in contours if cv2.arcLength(contour, True) > min_contour_length]
+
+        # Outer and inner contour of the track
+        epsilon_outer = 0.001 * cv2.arcLength(long_contours[0], True)
+        approx_contours_outer = cv2.approxPolyDP(long_contours[0], epsilon_outer, True)
+        approx_contours_outer = np.squeeze(approx_contours_outer)
+
+        epsilon_inner = 0.001 * cv2.arcLength(long_contours[-1], True)
+        approx_contours_inner = cv2.approxPolyDP(long_contours[-1], epsilon_outer, True)
+        approx_contours_inner = np.squeeze(approx_contours_inner)
+
+        return [approx_contours_outer, approx_contours_inner]

@@ -1,9 +1,12 @@
 import pygame
 import numpy as np
 
+from settings import *
+
 class AutonomousCar():
-    def __init__(self, screen, car_start_pos, contour_points):
+    def __init__(self, screen, car_start_pos, contour_points, checkpoints):
         self.screen = screen
+        self.points = 0
         # Load image and resize
         car_image = pygame.image.load('car.png')
         self.image = pygame.transform.scale(car_image, (20, 40))
@@ -32,68 +35,51 @@ class AutonomousCar():
         # Line segments of the track
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
+        self.checkpoints = checkpoints
 
-
-    def rotate(self):
-        angle = self.angle * np.pi / 180
-
-        # Calculate rotation matrix
-        rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)],
-                                    [np.sin(angle), np.cos(angle)]])
-
-        vertices_rel = np.array([
-                        [-self.rect.width / 2, -self.rect.height / 2],  # Top-left
-                        [self.rect.width / 2, -self.rect.height / 2],   # Top-right
-                        [self.rect.width / 2, self.rect.height / 2],    # Bottom-right
-                        [-self.rect.width / 2, self.rect.height / 2]    # Bottom-left
-                    ])
-        rotated_vertices_rel = np.dot(vertices_rel, rotation_matrix)
-        rotated_vertices = rotated_vertices_rel + np.array(self.rect.center)
-
-        self.corners = rotated_vertices
 
     def update(self, action):
-        if action == 1:
+        if action == 0:
             # Accelerate forward
             self.speed += self.acceleration
             if self.speed > self.max_speed:
                 self.speed = self.max_speed
 
-        elif action == 2:
+        elif action == 1:
             # Accelerate forward and rotate right
             self.speed += self.acceleration
             if self.speed > self.max_speed:
                 self.speed = self.max_speed
             if self.speed != 0:
                 self.angle -= 5
-        elif action == 3:
+        elif action == 2:
             # Accelerate forward and rotate left
             self.speed += self.acceleration
             if self.speed > self.max_speed:
                 self.speed = self.max_speed
             if self.speed != 0:
                 self.angle += 5
-        elif action == 4:
+        elif action == 3:
             # Turn right
             if self.speed != 0:
                 self.angle -= 5
-        elif action == 5:
+        elif action == 4:
             # Turn left
             if self.speed != 0:
                 self.angle += 5
-        elif action == 6:
+        elif action == 5:
             # Decelerate
             self.speed -= self.brake_deceleration
             if self.speed < -self.max_speed / 2:
                 self.speed = -self.max_speed / 2
-        elif action == 7:
+        elif action == 6:
             # Decelerate and turn right
             self.speed -= self.brake_deceleration
             if self.speed < -self.max_speed / 2:
                 self.speed = -self.max_speed / 2
             if self.speed != 0:
                 self.angle -= 5
-        elif action == 8:
+        elif action == 7:
             # Decelerate and turn left
             self.speed -= self.brake_deceleration
             if self.speed < -self.max_speed / 2:
@@ -117,20 +103,35 @@ class AutonomousCar():
         self.rect.y += self.speed * pygame.math.Vector2(0, -1).rotate(-self.angle).y
         self.rotate()
 
+    def rotate(self):
+        angle = self.angle * np.pi / 180
+
+        # Calculate rotation matrix
+        rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)],
+                                    [np.sin(angle), np.cos(angle)]])
+
+        vertices_rel = np.array([
+                        [-self.rect.width / 2, -self.rect.height / 2],  # Top-left
+                        [self.rect.width / 2, -self.rect.height / 2],   # Top-right
+                        [self.rect.width / 2, self.rect.height / 2],    # Bottom-right
+                        [-self.rect.width / 2, self.rect.height / 2]    # Bottom-left
+                    ])
+        rotated_vertices_rel = np.dot(vertices_rel, rotation_matrix)
+        rotated_vertices = rotated_vertices_rel + np.array(self.rect.center)
+
+        self.corners = rotated_vertices
+
+    def score(self):
+        if self.checkpoint():
+            self.points += GOAL_REWARD
+            return True
+        return False
+
     def reset(self):
-        self.rect.center = self.car_start_pos
-        self.speed = 0
-        self.angle = 0
-
-    def draw(self, surface):
-        rotated_image = pygame.transform.rotate(self.original_image, self.angle)
-        rect = rotated_image.get_rect(center=self.rect.center)
-        surface.blit(rotated_image, rect.topleft)
-
-    def reset(self, car_start_pos):
         self.rect.center = car_start_pos
         self.speed = 0
         self.angle = 0
+        self.points = 0
 
     def check_collision(self):
         corners = np.array(self.corners, dtype='int32')
@@ -178,7 +179,7 @@ class AutonomousCar():
 
             # Print collisions
             if np.any(collision_mask):
-                self.reset(self.car_start_pos)
+                self.reset()
 
     def perceive(self):
 
@@ -195,15 +196,67 @@ class AutonomousCar():
         extended_vectors = vectors * extension_factor
         extended_points = center + extended_vectors
 
+        distances = []
         for point in extended_points:
             inter_point = self.get_line_intersection(np.concatenate((center, point)))
             if inter_point is not None:
+                distance = np.sqrt(np.sum(np.square(inter_point - center)))
                 pygame.draw.line(self.screen, (0, 255, 0), center, inter_point, 5)
                 pygame.draw.circle(self.screen, (0, 0, 255), inter_point, 5)
             else:
+                distance = np.sqrt(np.sum(np.square(point - center)))
                 pygame.draw.line(self.screen, (255, 255, 0), center, point, 5)
                 pygame.draw.circle(self.screen, (255, 0, 255), point, 5)
 
+            distances.append(distance)
+
+        return np.array(distances)
+
+
+    def checkpoint(self):
+        corners = np.array(self.corners, dtype='int32')
+        top_left = corners[0]
+        top_right = corners[1]
+        bottom_right = corners[2]
+        bottom_left = corners[3]
+
+        lines = np.array([
+            np.concatenate([top_right, bottom_right]),  # Line from top_right to bottom_right
+            np.concatenate([bottom_left, top_left])  # Line from bottom_left to top_left
+        ])
+
+        for line in lines:
+            den = ((self.checkpoints[:, 0] - self.checkpoints[:, 2]) *
+                   (line[1] - line[3]) -
+                   (self.checkpoints[:, 1] - self.checkpoints[:, 3]) *
+                   (line[0] - line[2]))
+
+            # Find indices where den is not zero (to avoid division by zero)
+            non_zero_indices = np.nonzero(den)
+
+            # Calculate t and u for all pairs of lines where den is not zero
+            t_numerators = ((self.checkpoints[non_zero_indices, 0] - line[0]) *
+                            (line[1] - line[3]) -
+                            (self.checkpoints[non_zero_indices, 1] - line[1]) *
+                            (line[0] - line[2]))
+
+            t_denominators = den[non_zero_indices]
+
+            u_numerators = -((self.checkpoints[non_zero_indices, 0] - self.checkpoints[non_zero_indices, 2]) *
+                             (self.checkpoints[non_zero_indices, 1] - line[1]) -
+                             (self.checkpoints[non_zero_indices, 1] - self.checkpoints[non_zero_indices, 3]) *
+                             (self.checkpoints[non_zero_indices, 0] - line[0]))
+
+            u_denominators = den[non_zero_indices]
+
+            t = t_numerators / t_denominators
+            u = u_numerators / u_denominators
+
+            collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
+            if np.any(collision_mask):
+                return True
+            else:
+                return False
 
     def get_line_intersection(self, line):
         x3, y3, x4, y4 = line
@@ -226,8 +279,8 @@ class AutonomousCar():
         # Compute intersection points
         t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den
         u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den
-        valid_t = (t > 0) & (t < 1)
-        valid_u = (u > 0) & (u < 1)
+        valid_t = (t >= 0) & (t <= 1)
+        valid_u = (u >= 0) & (u <= 1)
         valid_intersections = valid_t & valid_u
 
         x1 = x1[valid_intersections]
@@ -242,11 +295,11 @@ class AutonomousCar():
             pts = np.vstack((x1 + t * (x2 - x1), y1 + t * (y2 - y1))).T
             pts = np.floor(pts).astype(int)
             if len(pts) == 1:
-                return tuple(pts[0])
+                return np.array(pts[0])
             else:
                 distances = np.sqrt(np.sum(np.square(pts - self.rect.center), axis=1))
                 idx = np.argmin(distances)
-                return tuple(pts[idx])
+                return np.array(pts[idx])
 
     def get_line_segments(self):
         # Function definition for creating lines
@@ -262,6 +315,12 @@ class AutonomousCar():
         line_segments_inner = extract_line_segments(self.contour_points[1])
 
         return np.vstack((line_segments_outer, line_segments_inner))
+
+
+    def draw(self, surface):
+        rotated_image = pygame.transform.rotate(self.original_image, self.angle)
+        rect = rotated_image.get_rect(center=self.rect.center)
+        surface.blit(rotated_image, rect.topleft)
 
 
 
