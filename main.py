@@ -27,26 +27,24 @@ def run():
         score = 0
         counter = 0
 
-        observation_, reward, done = game.step(0)
-        observation = np.array(observation_)
+        state_prev, reward, done = game.step(0)
+        game.draw()
 
         gtime = 0  # set game time back to 0
 
-        renderFlag = False  # if you want to render every episode set to true
+        renderFlag = False
 
-        if e % 10 == 0 and e > 0:  # render every 10 episodes
+        if e % 10 == 0 and e > 0:
             renderFlag = True
 
         while not done:
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
 
 
-            action = agent.choose_action(observation)
-            observation_, reward, done = game.step(action)
-            observation_ = np.array(observation_)
+            action = agent.choose_action(state_prev)
+            observation, reward, done = game.step(action)
 
             # This is a countdown if no reward is collected the car will be done within 100 ticks
             if reward == 0:
@@ -58,8 +56,7 @@ def run():
 
             score += reward
 
-            agent.remember(observation, action, reward, observation_, int(done))
-            observation = observation_
+            agent.remember(state_prev, action, reward, observation, int(done))
             agent.learn()
 
             gtime += 1
@@ -81,10 +78,11 @@ def run():
             agent.save_model()
             print("save model")
 
-        print('episode: ', e, 'score: %.2f' % score,
-              ' average score %.2f' % avg_score,
-              ' epsilon: ', agent.epsilon,
-              ' memory size', agent.memory.mem_cntr % MEM_SIZE)
+        print('Episode: ', e,
+              ', Score: %.2f' % score,
+              ', Average score %.2f' % avg_score,
+              ', Epsilon: ', agent.epsilon,
+              ', Memory size', agent.memory.mem_cntr % MEM_SIZE)
 
 
 run()

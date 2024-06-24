@@ -88,10 +88,9 @@ class Agent():
 
             batch_index = np.arange(BATCH_SIZE, dtype=np.int32)
 
-            q_target[batch_index, action_indices] = reward + GAMMA * q_next[
-                batch_index, max_actions.astype(int)] * done
+            q_target[batch_index, action_indices] = reward + GAMMA * q_next[batch_index, max_actions.astype(int)] * done
 
-            _ = self.brain_eval.train_batch(state, q_target)
+            _ = self.brain_eval.train_batch(state, np.array(q_target))
 
             self.epsilon = self.epsilon * EPSILON_DEC if self.epsilon > EPSILON_END else EPSILON_END
 
@@ -131,6 +130,7 @@ class Brain(nn.Module):
         return x
 
     def train_batch(self, batch_inputs, batch_targets):
+        batch_targets = torch.tensor(batch_targets, dtype=torch.float32)
         self.optimizer.zero_grad()
 
         outputs = self(batch_inputs)

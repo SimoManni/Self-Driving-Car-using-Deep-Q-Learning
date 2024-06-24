@@ -31,7 +31,7 @@ class RacingEnvironment:
         if self.car.score():
             reward += GOAL_REWARD
 
-        # Check if collision occured
+        # Check if collision occurred
         if self.car.check_collision():
             reward -= PENALTY
             done = True
