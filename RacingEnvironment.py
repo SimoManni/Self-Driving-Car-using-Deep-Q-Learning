@@ -7,16 +7,12 @@ from settings import *
 
 class RacingEnvironment:
     def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Autonomous Car - Deep Q Learning")
-
         track = pygame.image.load('track.png')
         self.image = pygame.transform.scale(track, (WIDTH, HEIGHT))
         self.contour_points = self.barriers()
         self.checkpoints = self.define_checkpoints()
 
-        self.car = AutonomousCar(self.screen, car_start_pos, self.contour_points, self.checkpoints)
+        self.car = AutonomousCar(car_start_pos, self.contour_points, self.checkpoints)
 
         self.VIS_BARRIERS = True
         self.VIS_CHECKPOINTS = True
@@ -44,27 +40,29 @@ class RacingEnvironment:
         return new_state, reward, done
 
     def reset(self):
-        self.screen.fill((0, 0, 0))
         self.car.reset()
     def close(self):
         pygame.quit()
 
 # Functions for visualization
-    def draw(self):
-        self.screen.blit(self.image, (0, 0))
+    def draw(self, screen):
+        screen.blit(self.image, (0, 0))
         if self.VIS_BARRIERS:
-            self.draw_lines()
+            self.draw_lines(screen)
         if self.VIS_CHECKPOINTS:
-            self.draw_checkpoints()
+            self.draw_checkpoints(screen)
 
-    def draw_lines(self):
-        pygame.draw.lines(self.screen, (255, 0, 0), True, self.contour_points[0], 5)
-        pygame.draw.lines(self.screen, (255, 0, 0), True, self.contour_points[1], 5)
+        self.car.draw(screen)
+        pygame.display.flip()
+
+    def draw_lines(self, screen):
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[0], 5)
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[1], 5)
         for point in np.vstack(self.contour_points):
-            pygame.draw.circle(self.screen, (0, 0, 255), point, 5)
-    def draw_checkpoints(self):
+            pygame.draw.circle(screen, (0, 0, 255), point, 5)
+    def draw_checkpoints(self, screen):
         for line in self.checkpoints:
-            pygame.draw.line(self.screen, (255, 0, 0), line[:2], line[2:], 5)
+            pygame.draw.line(screen, (255, 0, 0), line[:2], line[2:], 5)
 
 # Functions to define barriers and checkpoints
     def barriers(self):

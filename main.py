@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import sys
 
 from settings import *
 from RacingEnvironment import RacingEnvironment
@@ -8,18 +9,51 @@ from Q_learning import Agent
 
 game = RacingEnvironment()
 
+MAX_TIME_SECONDS = 5
 GameTime = 0
 GameHistory = []
-renderFlag = False
 
 agent = Agent()
 
 ddqn_scores = []
 eps_history = []
 
+def simulate_agent(epoch):
+    # Initialize Pygame
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption(f'Autonomous Car - Deep Q Learning - Epoch: {epoch}')
+
+    RaceEnv = RacingEnvironment()
+
+    running = True
+    start_time = pygame.time.get_ticks()
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Check elapsed time
+        current_time = pygame.time.get_ticks()  # Get current time in milliseconds
+        elapsed_time_seconds = (current_time - start_time) / 1000.0  # Convert to seconds
+
+        if elapsed_time_seconds >= MAX_TIME_SECONDS:
+            running = False  # Exit the loop if maximum time exceeded
+
+
+        observation = RaceEnv.car.perceive()
+        action = agent.brain_target(observation).detach().numpy()
+        RaceEnv.car.update(np.argmax(action))
+        RaceEnv.draw(screen)
+
+    # Quit Pygame
+    pygame.quit()
 
 def run():
     for e in range(N_EPISODES):
+
+        if e == 0 or e % 10 == 0:
+            simulate_agent(e)
 
         game.reset()  # reset env
 
@@ -28,21 +62,10 @@ def run():
         counter = 0
 
         state_prev, reward, done = game.step(0)
-        game.draw()
 
         gtime = 0  # set game time back to 0
 
-        renderFlag = False
-
-        if e % 10 == 0 and e > 0:
-            renderFlag = True
-
         while not done:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return
-
-
             action = agent.choose_action(state_prev)
             observation, reward, done = game.step(action)
 
@@ -64,8 +87,6 @@ def run():
             if gtime >= TOTAL_GAMETIME:
                 done = True
 
-            if renderFlag:
-                game.draw()
 
         eps_history.append(agent.epsilon)
         ddqn_scores.append(score)

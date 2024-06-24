@@ -4,8 +4,7 @@ import numpy as np
 from settings import *
 
 class AutonomousCar():
-    def __init__(self, screen, car_start_pos, contour_points, checkpoints):
-        self.screen = screen
+    def __init__(self, car_start_pos, contour_points, checkpoints):
         self.points = 0
         # Load image and resize
         car_image = pygame.image.load('car.png')
@@ -36,6 +35,9 @@ class AutonomousCar():
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
         self.checkpoints = checkpoints
+        self.perceived_points = None
+
+        self.VIS_PERCEPTION = True
 
 
     def update(self, action):
@@ -196,21 +198,19 @@ class AutonomousCar():
         extended_vectors = vectors * extension_factor
         extended_points = center + extended_vectors
 
-        distances = []
+        perceived_points = []
         for point in extended_points:
             inter_point = self.get_line_intersection(np.concatenate((center, point)))
             if inter_point is not None:
-                distance = np.sqrt(np.sum(np.square(inter_point - center)))
-                pygame.draw.line(self.screen, (0, 255, 0), center, inter_point, 5)
-                pygame.draw.circle(self.screen, (0, 0, 255), inter_point, 5)
+                perceived_points.append(inter_point)
             else:
-                distance = np.sqrt(np.sum(np.square(point - center)))
-                pygame.draw.line(self.screen, (255, 255, 0), center, point, 5)
-                pygame.draw.circle(self.screen, (255, 0, 255), point, 5)
+                perceived_points.append(point)
 
-            distances.append(distance)
+        perceived_points = np.array(perceived_points)
+        self.perceived_points = perceived_points
+        distances = np.sqrt(np.sum(np.square(perceived_points - center), axis=1))
 
-        return np.array(distances)
+        return distances
 
 
     def checkpoint(self):
@@ -316,12 +316,13 @@ class AutonomousCar():
 
         return np.vstack((line_segments_outer, line_segments_inner))
 
+    def draw(self, screen):
+        if self.perceived_points is not None and self.VIS_PERCEPTION:
+            for point in self.perceived_points:
+                pygame.draw.line(screen, (0, 255, 0), self.rect.center, point, 5)
+                pygame.draw.circle(screen, (0, 0, 255), point, 5)
 
-    def draw(self, surface):
+
         rotated_image = pygame.transform.rotate(self.original_image, self.angle)
         rect = rotated_image.get_rect(center=self.rect.center)
-        surface.blit(rotated_image, rect.topleft)
-
-
-
-
+        screen.blit(rotated_image, rect.topleft)

@@ -73,27 +73,31 @@ class Agent():
 
     def learn(self):
         if self.memory.mem_cntr > BATCH_SIZE:
+            # Retrieve batch of experience
             state, action, reward, new_state, done = self.memory.sample_buffer()
 
+            # Convert selected actions into indices
             action_values = np.array(self.action_space, dtype=np.int8)
             action_indices = np.dot(action, action_values)
 
+            # Compute q values for current and next state
             q_next = self.brain_target(new_state).detach().numpy()
             q_eval = self.brain_eval(new_state).detach().numpy()
             q_pred = self.brain_eval(state).detach().numpy()
 
+            # Bellman equation update
             max_actions = np.argmax(q_eval, axis=1)
-
             q_target = q_pred
-
             batch_index = np.arange(BATCH_SIZE, dtype=np.int32)
-
             q_target[batch_index, action_indices] = reward + GAMMA * q_next[batch_index, max_actions.astype(int)] * done
 
+            # Train evaluation network
             _ = self.brain_eval.train_batch(state, np.array(q_target))
 
+            # Epsilon decay
             self.epsilon = self.epsilon * EPSILON_DEC if self.epsilon > EPSILON_END else EPSILON_END
 
+            # Update parameters of target network
             if self.epsilon == 0.0:
                 self.update_network_parameters()
 
@@ -123,6 +127,8 @@ class Brain(nn.Module):
 
     def forward(self, x):
         x = torch.tensor(x, dtype=torch.float32)
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
