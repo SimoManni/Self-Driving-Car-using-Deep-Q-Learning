@@ -49,28 +49,32 @@ class RacingEnvironment:
         for point in np.vstack(self.contour_points):
             pygame.draw.circle(self.screen, (0, 0, 255), point, 5)
     def draw_checkpoints(self):
-        for line in self.checkpoints:
-            pygame.draw.line(self.screen, (255, 0, 0), line[:2], line[2:], 5)
+        for idx, line in enumerate(self.checkpoints):
+            if idx < self.car.passed_checkpoints:
+                pygame.draw.line(self.screen, (255, 255, 0), line[:2], line[2:], 5)
+            else:
+                pygame.draw.line(self.screen, (255, 0, 0), line[:2], line[2:], 5)
+
 
     def define_checkpoints(self):
-        return np.array([[184, 550, 200, 470],
-                             [165, 461, 102, 507],
-                             [160, 441, 105, 385],
-                             [207, 450, 220, 371],
-                             [237, 365, 315, 377],
-                             [197, 325, 250, 271],
-                             [148, 203, 224, 220],
-                             [286, 208, 329, 141],
-                             [379, 301, 428, 241],
-                             [482, 265, 546, 310],
-                             [451, 166, 527, 163],
-                             [555, 129, 566, 51],
-                             [605, 172, 676, 148],
-                             [622, 288, 697, 284],
-                             [628, 411, 703, 414],
-                             [595, 464, 633, 532],
-                             [485, 472, 489, 547],
-                             [314, 480, 312, 558]])
+        return np.array([[160, 441, 105, 385],
+                         [207, 450, 220, 371],
+                         [237, 365, 315, 377],
+                         [197, 325, 250, 271],
+                         [148, 203, 224, 220],
+                         [286, 208, 329, 141],
+                         [379, 301, 428, 241],
+                         [482, 265, 546, 310],
+                         [451, 166, 527, 163],
+                         [555, 129, 566, 51],
+                         [605, 172, 676, 148],
+                         [622, 288, 697, 284],
+                         [628, 411, 703, 414],
+                         [595, 464, 633, 532],
+                         [485, 472, 489, 547],
+                         [314, 480, 312, 558],
+                         [184, 550, 200, 470],
+                         [165, 461, 102, 507]])
 
     def barriers(self):
         image = cv2.imread('track.png')

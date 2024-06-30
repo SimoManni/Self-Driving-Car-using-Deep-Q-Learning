@@ -34,8 +34,10 @@ class AutonomousCar():
         # Line segments of the track
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
+        self.checkpoints_original = checkpoints
         self.checkpoints = checkpoints
         self.perceived_points = None
+        self.past_checkpoints = []
 
         self.VIS_PERCEPTION = True
 
@@ -123,17 +125,13 @@ class AutonomousCar():
 
         self.corners = rotated_vertices
 
-    def score(self):
-        if self.checkpoint():
-            self.points += GOAL_REWARD
-            return True
-        return False
-
     def reset(self):
         self.rect.center = car_start_pos
         self.speed = 0
         self.angle = 0
         self.points = 0
+        self.checkpoints = self.checkpoints_original
+        self.past_checkpoints = []
 
     def check_collision(self):
         corners = np.array(self.corners, dtype='int32')
@@ -254,6 +252,9 @@ class AutonomousCar():
 
             collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
             if np.any(collision_mask):
+                idx = np.where(collision_mask)
+                self.checkpoints = np.delete(self.checkpoints, idx, axis=0)
+                self.past_checkpoints.append(idx)
                 return True
             else:
                 return False

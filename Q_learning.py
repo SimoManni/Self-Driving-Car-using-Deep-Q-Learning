@@ -66,7 +66,7 @@ class Agent():
         if rand < EPSILON:
             action = np.random.choice(self.action_space)
         else:
-            actions = self.brain_eval(state)
+            actions = self.brain_eval(state).detach().numpy()
             action = np.argmax(actions)
 
         return action
@@ -122,6 +122,12 @@ class Brain(nn.Module):
         self.fc2 = nn.Linear(256, N_ACTIONS)
         self.softmax = nn.Softmax(dim=1)
 
+        # Initialize weights to zero
+        self.fc1.weight.data.fill_(0.0)
+        self.fc1.bias.data.fill_(0.0)
+        self.fc2.weight.data.fill_(0.0)
+        self.fc2.bias.data.fill_(0.0)
+
         self.optimizer = optim.Adam(self.parameters(), LR)
         self.criterion = nn.MSELoss()
 
@@ -151,3 +157,12 @@ class Brain(nn.Module):
 
     def load_model(self, filepath):
         self.load_state_dict(torch.load(filepath))
+
+    def copy_weights(self, TrainNet):
+        # Get the trainable variables (weights) from both networks
+        variables1 = self.parameters()
+        variables2 = TrainNet.parameters()
+
+        # Iterate through corresponding variables and copy weights
+        for v1, v2 in zip(variables1, variables2):
+            v1.data.copy_(v2.data)

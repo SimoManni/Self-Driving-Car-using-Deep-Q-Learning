@@ -33,6 +33,7 @@ class Car():
         self.contour_points = contour_points
         self.contour_lines = self.get_line_segments()
         self.checkpoints = checkpoints
+        self.passed_checkpoints = 0
 
 
     def rotate(self):
@@ -95,6 +96,7 @@ class Car():
         self.rect.center = car_start_pos
         self.speed = 0
         self.angle = 0
+        self.passed_checkpoints = 0
 
     def check_collision(self):
         corners = np.array(self.corners, dtype='int32')
@@ -170,6 +172,7 @@ class Car():
 
     def checkpoint(self):
         corners = np.array(self.corners, dtype='int32')
+
         top_left = corners[0]
         top_right = corners[1]
         bottom_right = corners[2]
@@ -180,37 +183,42 @@ class Car():
             np.concatenate([bottom_left, top_left])  # Line from bottom_left to top_left
         ])
 
-        for line in lines:
-            den = ((self.checkpoints[:, 0] - self.checkpoints[:, 2]) *
-                   (line[1] - line[3]) -
-                   (self.checkpoints[:, 1] - self.checkpoints[:, 3]) *
-                   (line[0] - line[2]))
+        if self.passed_checkpoints == 0:
+            checkpoint = self.checkpoints[0]
+        elif self.passed_checkpoints == self.checkpoints.shape[0]:
+            checkpoint = self.checkpoints[-1]
+            self.passed_checkpoints = 0
+        else:
+            checkpoint = self.checkpoints[self.passed_checkpoints]
 
-            # Find indices where den is not zero (to avoid division by zero)
-            non_zero_indices = np.nonzero(den)
+        den = ((checkpoint[0] - checkpoint[2]) *
+               (lines[:, 1] - lines[:, 3]) -
+               (checkpoint[1] - checkpoint[3]) *
+               (lines[:, 0] - lines[:, 2]))
 
-            # Calculate t and u for all pairs of lines where den is not zero
-            t_numerators = ((self.checkpoints[non_zero_indices, 0] - line[0]) *
-                            (line[1] - line[3]) -
-                            (self.checkpoints[non_zero_indices, 1] - line[1]) *
-                            (line[0] - line[2]))
+        non_zero_indices = np.nonzero(den)
+        den = den[non_zero_indices]
 
-            t_denominators = den[non_zero_indices]
+        # Calculate t and u
+        t_numerators = ((checkpoint[0] - lines[non_zero_indices, 0]) *
+                        (lines[non_zero_indices, 1] - lines[non_zero_indices, 3]) -
+                        (checkpoint[1] - lines[non_zero_indices, 1]) *
+                        (lines[non_zero_indices, 0] - lines[non_zero_indices, 2]))
 
-            u_numerators = -((self.checkpoints[non_zero_indices, 0] - self.checkpoints[non_zero_indices, 2]) *
-                             (self.checkpoints[non_zero_indices, 1] - line[1]) -
-                             (self.checkpoints[non_zero_indices, 1] - self.checkpoints[non_zero_indices, 3]) *
-                             (self.checkpoints[non_zero_indices, 0] - line[0]))
 
-            u_denominators = den[non_zero_indices]
+        u_numerators = -((checkpoint[0] - checkpoint[2]) *
+                         (checkpoint[1] - lines[non_zero_indices, 1]) -
+                         (checkpoint[1] - checkpoint[3]) *
+                         (checkpoint[0] - lines[non_zero_indices, 0]))
 
-            t = t_numerators / t_denominators
-            u = u_numerators / u_denominators
+        t = t_numerators / den
+        u = u_numerators / den
 
-            collision_mask = (t > 0) & (t < 1) & (u > 0) & (u < 1)
-            if np.any(collision_mask):
-                print('Reward')
-                break
+        collision = (t > 0) & (t < 1) & (u > 0) & (u < 1)
+        if np.any(collision):
+            self.passed_checkpoints += 1
+            if self.passed_checkpoints == self.checkpoints.shape[0]:
+                self.passed_checkpoints = 0
 
     def get_line_intersection(self, line):
         x3, y3, x4, y4 = line

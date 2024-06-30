@@ -18,6 +18,7 @@ agent = Agent()
 ddqn_scores = []
 eps_history = []
 
+# Function to simulate car using learned policy
 def simulate_agent(epoch):
     # Initialize Pygame
     pygame.init()
@@ -42,7 +43,7 @@ def simulate_agent(epoch):
 
 
         observation = RaceEnv.car.perceive()
-        action = agent.brain_target(observation).detach().numpy()
+        action = agent.brain_eval(observation).detach().numpy()
         RaceEnv.car.update(np.argmax(action))
         RaceEnv.draw(screen)
 
@@ -55,8 +56,8 @@ def run():
         if e == 0 or e % 10 == 0:
             simulate_agent(e)
 
-        game.reset()  # reset env
-
+        game.reset()
+        agent.epsilon = EPSILON
         done = False
         score = 0
         counter = 0
@@ -87,6 +88,9 @@ def run():
             if gtime >= TOTAL_GAMETIME:
                 done = True
 
+        if done:
+            game.reset()
+            agent.epsilon = EPSILON
 
         eps_history.append(agent.epsilon)
         ddqn_scores.append(score)
