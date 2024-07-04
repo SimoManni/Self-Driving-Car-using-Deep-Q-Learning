@@ -25,19 +25,15 @@ class RacingEnvironment:
 
         # Check if car passes checkpoint
         if self.car.checkpoint():
-            self.car.points += GOAL_REWARD
             reward += GOAL_REWARD
 
         # Check if collision occurred
         if self.car.check_collision():
-            self.car.points -= PENALTY
-            reward -= PENALTY
+            reward += PENALTY
             done = True
 
-        new_state = self.car.perceive()
-
+        new_state = self.car.get_state()
         if done:
-            self.car.reset()
             new_state = None
 
         return new_state, reward, done
@@ -50,6 +46,8 @@ class RacingEnvironment:
 # Functions for visualization
     def draw(self, screen):
         screen.blit(self.image, (0, 0))
+        screen.blit(self.image, (0, 0))
+        text = pygame.font.Font(None, 30).render(f"Laps completed: {self.car.laps}", True, (0, 0, 0))
         if self.VIS_BARRIERS:
             self.draw_lines(screen)
         if self.VIS_CHECKPOINTS:
@@ -65,10 +63,10 @@ class RacingEnvironment:
             pygame.draw.circle(screen, (0, 0, 255), point, 5)
     def draw_checkpoints(self, screen):
         for idx, line in enumerate(self.checkpoints):
-            if idx in self.car.past_checkpoints:
-                pygame.draw.line(screen, (255, 255, 0), line[:2], line[2:], 5)
+            if idx < self.car.passed_checkpoints:
+                pygame.draw.line(screen, (255, 255, 0), line[:2], line[2:], 3)
             else:
-                pygame.draw.line(screen, (255, 0, 0), line[:2], line[2:], 5)
+                pygame.draw.line(screen, (255, 0, 0), line[:2], line[2:], 3)
 
 # Functions to define barriers and checkpoints
     def barriers(self):
@@ -96,21 +94,37 @@ class RacingEnvironment:
         return [approx_contours_outer, approx_contours_inner]
 
     def define_checkpoints(self):
-        return np.array([ [207, 450, 220, 371],
-                          [237, 365, 315, 377],
-                          [197, 325, 250, 271],
-                          [148, 203, 224, 220],
-                          [286, 208, 329, 141],
-                          [379, 301, 428, 241],
-                          [482, 265, 546, 310],
-                          [451, 166, 527, 163],
-                          [555, 129, 566, 51],
-                          [605, 172, 676, 148],
-                          [622, 288, 697, 284],
-                          [628, 411, 703, 414],
-                          [595, 464, 633, 532],
-                          [485, 472, 489, 547],
-                          [314, 480, 312, 558],
-                          [184, 550, 200, 470],
-                          [165, 461, 102, 507],
-                          [160, 441, 105, 385]])
+        return np.array([[396, 555, 392, 477],
+                         [314, 480, 312, 558],
+                         [253, 480, 244, 559],
+                         [184, 550, 200, 470],
+                         [165, 461, 102, 507],
+                         [160, 441, 91, 412],
+                         [176, 442, 189, 364],
+                         [229, 373, 245, 450],
+                         [237, 365, 310, 388],
+                         [229, 349, 281, 291],
+                         [175, 305, 237, 259],
+                         [144, 226, 224, 229],
+                         [232, 209, 176, 155],
+                         [256, 199, 260, 123],
+                         [286, 208, 329, 141],
+                         [331, 247, 385, 194],
+                         [379, 301, 428, 241],
+                         [455, 261, 434, 337],
+                         [482, 268, 517, 336],
+                         [482, 255, 558, 268],
+                         [470, 225, 547, 205],
+                         [451, 166, 527, 163],
+                         [531, 139, 463, 97],
+                         [555, 129, 566, 51],
+                         [582, 141, 628, 78],
+                         [605, 172, 676, 148],
+                         [618, 229, 691, 217],
+                         [622, 288, 697, 284],
+                         [624, 349, 701, 354],
+                         [628, 411, 703, 414],
+                         [621, 446, 684, 481],
+                         [595, 464, 633, 532],
+                         [539, 468, 550, 547],
+                         [485, 472, 489, 547]])

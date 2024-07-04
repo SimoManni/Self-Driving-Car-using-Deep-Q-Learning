@@ -1,6 +1,5 @@
 import pygame
 import numpy as np
-import sys
 
 from settings import *
 from RacingEnvironment import RacingEnvironment
@@ -24,10 +23,13 @@ def simulate_agent(epoch):
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(f'Autonomous Car - Deep Q Learning - Epoch: {epoch}')
+    FONT = pygame.font.Font(None, 32)
 
+    score = 0
     RaceEnv = RacingEnvironment()
 
     running = True
+
     start_time = pygame.time.get_ticks()
     while running:
         for event in pygame.event.get():
@@ -42,35 +44,45 @@ def simulate_agent(epoch):
             running = False  # Exit the loop if maximum time exceeded
 
 
-        observation = RaceEnv.car.perceive()
-        action = agent.brain_eval(observation).detach().numpy()
-        RaceEnv.car.update(np.argmax(action))
+        state = RaceEnv.car.get_state()
+        q_values = agent.policy_dqn.predict(state)
+        _, reward, done = RaceEnv.step(np.argmax(q_values))
         RaceEnv.draw(screen)
 
-    # Quit Pygame
+        if done:
+            RaceEnv.reset()
+            score = 0
+        score += reward
+
+        txt_score = FONT.render(f'Score: {score}', True, (0, 0, 0))
+        screen.blit(txt_score, (50, 50))
+
+        txt_speed = FONT.render(f'Speed: {RaceEnv.car.speed}', True, (0, 0, 0))
+        screen.blit(txt_speed, (50, 70))
+
+        pygame.display.update()
+        RaceEnv.draw(screen)
+
     pygame.quit()
 
 def run():
     for e in range(N_EPISODES):
 
-        if e == 0 or e % 10 == 0:
+        if e % 100 == 0:
             simulate_agent(e)
 
         game.reset()
-        agent.epsilon = EPSILON
-        done = False
         score = 0
         counter = 0
+        gtime = 0
 
         state_prev, reward, done = game.step(0)
 
-        gtime = 0  # set game time back to 0
-
         while not done:
             action = agent.choose_action(state_prev)
-            observation, reward, done = game.step(action)
+            new_state, reward, done = game.step(action)
 
-            # This is a countdown if no reward is collected the car will be done within 100 ticks
+            # Countdown if no reward is collected
             if reward == 0:
                 counter += 1
                 if counter > 100:
@@ -80,28 +92,23 @@ def run():
 
             score += reward
 
-            agent.remember(state_prev, action, reward, observation, int(done))
+            agent.remember(state_prev, action, reward, new_state, int(done))
             agent.learn()
+            state_prev = new_state
 
             gtime += 1
 
             if gtime >= TOTAL_GAMETIME:
                 done = True
 
-        if done:
-            game.reset()
-            agent.epsilon = EPSILON
+        if e % 10 == 0 and e > 10:
+            agent.save_model()
+            print("save model")
+
 
         eps_history.append(agent.epsilon)
         ddqn_scores.append(score)
         avg_score = np.mean(ddqn_scores[max(0, e - 100):(e + 1)])
-
-        if e % REPLACE_TARGET == 0 and e > REPLACE_TARGET:
-            agent.update_network_parameters()
-
-        if e % 10 == 0 and e > 10:
-            agent.save_model()
-            print("save model")
 
         print('Episode: ', e,
               ', Score: %.2f' % score,
