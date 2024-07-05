@@ -31,3 +31,10 @@ This class simulates a racing environment for an autonomous car, including track
 - **State update (`step`)**: Updates the car's state based on the action, checks for collisions and checkpoints, calculates rewards, and returns the new state, reward, and whether the episode is done.
 
 - **Rendering (`draw`)**: Renders the environment on the screen, including barriers, checkpoints, and the car.
+
+
+## Main 
+The main file runs the loop for a fixed number of episodes as specified in the 'settings.py' file. At a fixed rate, it also simulates the agent in the environment to see how much progress the car has made in the learning process. 
+
+## Main test
+This program loads the learned policy and simulates the autonomous car in the racing environment, as shown in the video above. 
