@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 from settings import *
 
@@ -15,14 +14,16 @@ class ReplayBuffer(object):
         self.reward_memory = np.zeros(MEM_SIZE, dtype=np.int8)
         self.terminal_memory = np.zeros(MEM_SIZE, dtype=np.bool_)
 
-    def store_transition(self, state, action, reward, state_, done):
-        index = self.mem_cntr % MEM_SIZE
-        self.state_memory[index] = state
-        self.new_state_memory[index] = state_
-        self.action_memory[index] = action
-        self.reward_memory[index] = reward
-        self.terminal_memory[index] = 1 - done
-        self.mem_cntr += 1
+    def store_transition(self, state_array, action_array, reward_array, new_state_array, done_array):
+        for state, action, reward, new_state, done in zip(state_array, action_array, reward_array, new_state_array, done_array):
+            index = self.mem_cntr % MEM_SIZE
+            self.state_memory[index] = state
+            self.new_state_memory[index] = new_state
+            self.action_memory[index] = action
+            self.reward_memory[index] = reward
+            self.terminal_memory[index] = 1 - done
+
+            self.mem_cntr += 1
 
     def sample_buffer(self):
         max_mem = min(self.mem_cntr, MEM_SIZE)
@@ -47,6 +48,12 @@ class Agent():
 
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
+
+    def get_actions(self, state_array):
+        actions = []
+        for state in state_array:
+            actions.append(self.choose_action(state))
+        return np.array(actions)
 
     def choose_action(self, state):
         state = state[np.newaxis, :]
@@ -139,6 +146,3 @@ class Brain(nn.Module):
 
     def load_model(self, filepath):
         self.load_state_dict(torch.load(filepath))
-
-    def copy_weights(self, TrainNet):
-        self.load_state_dict(TrainNet.state_dict())

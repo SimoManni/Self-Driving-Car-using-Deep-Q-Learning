@@ -1,0 +1,24 @@
+# Functions for visualization
+    def draw(self, screen):
+        screen.blit(self.image, (0, 0))
+        screen.blit(self.image, (0, 0))
+        text = pygame.font.Font(None, 30).render(f"Laps completed: {self.car.laps}", True, (0, 0, 0))
+        if self.VIS_BARRIERS:
+            self.draw_lines(screen)
+        if self.VIS_CHECKPOINTS:
+            self.draw_checkpoints(screen)
+
+        self.car.draw(screen)
+        pygame.display.flip()
+
+    def draw_lines(self, screen):
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[0], 5)
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[1], 5)
+        for point in np.vstack(self.contour_points):
+            pygame.draw.circle(screen, (0, 0, 255), point, 5)
+    def draw_checkpoints(self, screen):
+        for idx, line in enumerate(self.checkpoints):
+            if idx < self.car.passed_checkpoints:
+                pygame.draw.line(screen, (255, 255, 0), line[:2], line[2:], 3)
+            else:
+                pygame.draw.line(screen, (255, 0, 0), line[:2], line[2:], 3)

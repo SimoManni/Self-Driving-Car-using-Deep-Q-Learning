@@ -4,7 +4,7 @@ import numpy as np
 from settings import *
 
 class AutonomousCar():
-    def __init__(self, car_start_pos, contour_points, checkpoints):
+    def __init__(self, random=True):
         # Load image and resize
         car_image = pygame.image.load('car.png')
         self.image = pygame.transform.scale(car_image, (20, 40))
@@ -12,10 +12,18 @@ class AutonomousCar():
         self.rect = self.image.get_rect()
 
         # Initial position and velocity
-        self.rect.center = car_start_pos
-        self.car_start_pos = car_start_pos
+        if random:
+            self.car_start_pos = None
+            self.angle = None
+            self.checkpoints = self.get_checkpoints_and_start_pos()
+        else:
+            self.car_start_pos = INIT_POS
+            self.angle = INIT_ANGLE
+            self.checkpoints = CHECKPOINTS
+        self.rect.center = self.car_start_pos
         self.speed = 0
-        self.angle = 90
+        self.car_start_pos_original = self.car_start_pos
+        self.angle_original = self.angle
 
         self.corners = np.array([
                 [-self.rect.width / 2, -self.rect.height / 2],  # Top-left
@@ -31,10 +39,8 @@ class AutonomousCar():
         self.max_speed = 5
 
         # Line segments of the track
-        self.contour_points = contour_points
+        self.contour_points = BARRIERS
         self.contour_lines = self.get_line_segments()
-        self.checkpoints_original = checkpoints
-        self.checkpoints = checkpoints
         self.passed_checkpoints = 0
         self.laps = 0
         self.perceived_points = None
@@ -71,9 +77,6 @@ class AutonomousCar():
             # Turn left
             if self.speed != 0:
                 self.angle += 5
-        elif action == 5:
-            # Do nothing
-            pass
 
         # Apply friction to gradually slow down the car if gas is not applied
         if action == 3 or action == 4 or action == 5:
@@ -105,9 +108,9 @@ class AutonomousCar():
         self.corners = rotated_vertices
 
     def reset(self):
-        self.rect.center = car_start_pos
+        self.rect.center = self.car_start_pos_original
+        self.angle = self.angle_original
         self.speed = 0
-        self.angle = 90
         self.passed_checkpoints = 0
         self.laps = 0
 
@@ -307,7 +310,26 @@ class AutonomousCar():
                 pygame.draw.line(screen, (0, 255, 0), self.rect.center, point, 3)
                 pygame.draw.circle(screen, (0, 0, 255), point, 3)
 
-
         rotated_image = pygame.transform.rotate(self.original_image, self.angle)
         rect = rotated_image.get_rect(center=self.rect.center)
         screen.blit(rotated_image, rect.topleft)
+
+    def get_checkpoints_and_start_pos(self):
+        checkpoints = CHECKPOINTS
+        index = np.random.randint(0, len(checkpoints) - 1)
+
+        # Definition of starting position and angle
+        line1 = checkpoints[index]
+        point1 = ((line1[0] + line1[2]) / 2, (line1[1] + line1[3]) / 2)
+        line2 = checkpoints[(index - 1) % (len(checkpoints) - 1)]
+        point2 = ((line2[0] + line2[2]) / 2, (line2[1] + line2[3]) / 2)
+        self.car_start_pos = ((np.array(point1) + np.array(point2)) / 2).astype(int)
+        self.rect.center = self.car_start_pos
+        angle = np.arctan2(point1[1] - point2[1], point1[0] - point2[0])
+        self.angle = (angle + 3 / 2 * np.pi) % (2 * np.pi) * 180 / np.pi
+
+        # Definition of checkpoints
+        if index != 0:
+            return np.vstack((checkpoints[index:], checkpoints[:index]))
+        elif index == 0:
+            return checkpoints
