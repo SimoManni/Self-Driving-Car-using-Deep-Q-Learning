@@ -2,7 +2,7 @@
  This repository contains the implementation of a simple self-driving simulation enviroment in Pygame used to train a Reinforcement Learning Agent using a simple Deep Q-Learning algorithm. The results as well as the game environment can be visualised in the video below. 
 
 <p align="center">
-  <img src="https://github.com/SimoManni/Self-Driving-Car-using-Deep-Q-Learning/assets/151052936/252ae138-fd93-473b-a119-69221bdb4df0" alt="RL_Car" width="400">
+  <img src="https://github.com/user-attachments/assets/a507e87f-fc9a-4f89-9cdd-5b76bad8ec1a" alt="RL_Car" width="400">
 </p>
 
 ## Autonomous Car
@@ -23,6 +23,8 @@ The AutonomousCar class encapsulates all essential methods for visualizing the c
 
 - **Rendering (`draw`):**
    - Draws the car and its perceived points on the screen.
+
+In addition, the constructor takes a boolean variable as input, which is used for the definition of the starting configuration. When 'random' is set to 'True', the car randomly picks a starting position and corresponding angle; furthermore, the checkpoints are sorted in such a way that the car gets rewards only when going forward along the track. This configuration allows for the creation of multiple cars during the learning phase. On the other hand, when the class is used to test the discovered policy, 'random' is set to 'False' and the starting configuration and checkpoints are defined in a way that can be manipulated by the user.  
 
 ## RacingEnvironment Class
 
