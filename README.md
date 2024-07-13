@@ -24,7 +24,8 @@ The AutonomousCar class encapsulates all essential methods for visualizing the c
 - **Rendering (`draw`):**
    - Draws the car and its perceived points on the screen.
 
-In addition, the constructor takes a boolean variable as input, which is used for the definition of the starting configuration. When 'random' is set to 'True', the car randomly picks a starting position and corresponding angle; furthermore, the checkpoints are sorted in such a way that the car gets rewards only when going forward along the track. This configuration allows for the creation of multiple cars during the learning phase. On the other hand, when the class is used to test the discovered policy, 'random' is set to 'False' and the starting configuration and checkpoints are defined in a way that can be manipulated by the user.  
+In addition, the constructor takes a boolean variable as input, which is used for the definition of the starting configuration. When **'random'** is set to **'True'**, the car randomly picks a starting position and corresponding angle; furthermore, the checkpoints are sorted in such a way that the car gets rewards only when going forward along the track. This configuration allows for the creation of multiple cars during the learning phase. On the other hand, when the class is used to test the discovered policy, **'random'** is set to **'False'** and the starting configuration and checkpoints are defined in a way that can be manipulated by the user.
+
 
 ## RacingEnvironment Class
 
