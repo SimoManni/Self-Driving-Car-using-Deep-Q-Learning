@@ -6,15 +6,14 @@ import cv2
 WIDTH, HEIGHT = 800, 600
 TOTAL_GAMETIME = 1000
 N_EPISODES = 200
-INIT_POS = (521, 94)
-INIT_ANGLE = 300
-N_CARS = 20
+index = 10
+N_CARS = 10
 
 ALPHA = 0.005
-GAMMA = 0.99
+GAMMA = 0.5
 N_ACTIONS = 5
 EPSILON = 1.0
-EPSILON_END = 0.10
+EPSILON_END = 0.1
 EPSILON_DEC = 0.995
 BATCH_SIZE = 128
 INPUT_DIMS = 9
@@ -24,6 +23,7 @@ LR = 0.003
 GOAL_REWARD = 1
 LIFE_REWARD = 0
 PENALTY = -1
+MAX_DISTANCE = 156.5247584249853
 
 ## Defition of barriers ##
 
@@ -86,3 +86,38 @@ CHECKPOINTS = np.array([[396, 555, 392, 477],
                          [595, 464, 633, 532],
                          [539, 468, 550, 547],
                          [485, 472, 489, 547]])
+
+# Definition of starting points and angles
+x1 = CHECKPOINTS[:, 0]
+y1 = CHECKPOINTS[:, 1]
+x2 = CHECKPOINTS[:, 2]
+y2 = CHECKPOINTS[:, 3]
+x_middle = (x1 + x2) / 2
+y_middle = (y1 + y2) / 2
+
+starting_points = []
+for i, (x_m, y_m) in enumerate(zip(x_middle, y_middle)):
+    index = (i + 1) % (len(x_middle))
+    x = (x_m + x_middle[index]) / 2
+    y = (y_m + y_middle[index]) / 2
+    starting_points.append([x, y])
+
+STARTING_POINTS = np.roll(np.array(starting_points).astype(int), 1, axis=0)
+
+angles = []
+for i, (x_m, y_m) in enumerate(zip(x_middle, y_middle)):
+    index = (i + 1) % (len(x_middle))
+    angle = np.arctan2(y_middle[index] - y_m , x_middle[index] - x_m) * 180 / np.pi
+    corrected_angle = (270 - angle % 360) if angle % 360 < 270 else (angle % 360)
+    angles.append(corrected_angle)
+
+STARTING_ANGLES = np.roll(np.array(angles).astype(int), 1)
+
+index = 0
+INIT_POS = STARTING_POINTS[index]
+INIT_ANGLE = STARTING_ANGLES[index]
+
+if index != 0:
+    CHECKPOINTS = np.vstack((CHECKPOINTS[index:], CHECKPOINTS[:index]))
+elif index == 0:
+    CHECKPOINTS = CHECKPOINTS

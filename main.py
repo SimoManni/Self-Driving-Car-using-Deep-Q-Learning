@@ -18,12 +18,45 @@ agent = Agent()
 ddqn_scores = []
 eps_history = []
 
+def simulate_agents(epoch):
+    # Initialize Pygame
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption(f'Autonomous Car - Deep Q Learning - Epoch: {epoch}')
+
+    running = True
+    start_time = pygame.time.get_ticks()
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        # Check elapsed time
+        current_time = pygame.time.get_ticks()  # Get current time in milliseconds
+        elapsed_time_seconds = (current_time - start_time) / 1000.0  # Convert to seconds
+        if elapsed_time_seconds >= MAX_TIME_SECONDS:
+            running = False  # Exit the loop if maximum time exceeded
+
+
+        states = game.get_state()
+        actions = agent.get_actions(states)
+        _, _, done_array = game.step(actions)
+        for i, done in enumerate(done_array):
+            if done:
+                game.cars[i].reset()
+
+        game.draw(screen)
+        pygame.display.update()
+
+    # Quit Pygame
+    pygame.quit()
+
+
 
 def run():
     for e in range(N_EPISODES):
 
-        # if e % 100 == 0:
-        #     simulate_agent(e)
+        if e % 10 == 0:
+            simulate_agents(e)
 
         game.reset()
         score = 0

@@ -190,7 +190,7 @@ class AutonomousCar():
         self.perceived_points = perceived_points
         distances = np.sqrt(np.sum(np.square(perceived_points - center), axis=1))
 
-        return distances.astype(int)
+        return distances
 
     def checkpoint(self):
         corners = np.array(self.corners, dtype='int32')
@@ -316,17 +316,12 @@ class AutonomousCar():
 
     def get_checkpoints_and_start_pos(self):
         checkpoints = CHECKPOINTS
-        index = np.random.randint(0, len(checkpoints) - 1)
+        index = np.random.randint(0, len(checkpoints))
 
         # Definition of starting position and angle
-        line1 = checkpoints[index]
-        point1 = ((line1[0] + line1[2]) / 2, (line1[1] + line1[3]) / 2)
-        line2 = checkpoints[(index - 1) % (len(checkpoints) - 1)]
-        point2 = ((line2[0] + line2[2]) / 2, (line2[1] + line2[3]) / 2)
-        self.car_start_pos = ((np.array(point1) + np.array(point2)) / 2).astype(int)
+        self.car_start_pos = STARTING_POINTS[index]
         self.rect.center = self.car_start_pos
-        angle = np.arctan2(point1[1] - point2[1], point1[0] - point2[0])
-        self.angle = (angle + 3 / 2 * np.pi) % (2 * np.pi) * 180 / np.pi
+        self.angle = STARTING_ANGLES[index]
 
         # Definition of checkpoints
         if index != 0:

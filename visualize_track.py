@@ -1,6 +1,7 @@
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
+from settings import *
 
 # Open an image file
 img = Image.open('track.png')
@@ -8,49 +9,35 @@ img = Image.open('track.png')
 # Resize the image
 img_resized = img.resize((800, 600))
 
-line_coordinates = np.array([[396, 555, 392, 477],
-                         [314, 480, 312, 558],
-                         [253, 480, 244, 559],
-                         [184, 550, 200, 470],
-                         [165, 461, 102, 507],
-                         [160, 441, 91, 412],
-                         [176, 442, 189, 364],
-                         [229, 373, 245, 450],
-                         [237, 365, 310, 388],
-                         [229, 349, 281, 291],
-                         [175, 305, 237, 259],
-                         [144, 226, 224, 229],
-                         [232, 209, 176, 155],
-                         [256, 199, 260, 123],
-                         [286, 208, 329, 141],
-                         [331, 247, 385, 194],
-                         [379, 301, 428, 241],
-                         [455, 261, 434, 337],
-                         [482, 268, 517, 336],
-                         [482, 255, 558, 268],
-                         [470, 225, 547, 205],
-                         [451, 166, 527, 163],
-                         [531, 139, 463, 97],
-                         [555, 129, 566, 51],
-                         [582, 141, 628, 78],
-                         [605, 172, 676, 148],
-                         [618, 229, 691, 217],
-                         [622, 288, 697, 284],
-                         [624, 349, 701, 354],
-                         [628, 411, 703, 414],
-                         [621, 446, 684, 481],
-                         [595, 464, 633, 532],
-                         [539, 468, 550, 547],
-                         [485, 472, 489, 547]])
+line_coordinates = CHECKPOINTS
+
+# Compute mean points
+starting_points = STARTING_POINTS
 
 # Plot the image
 plt.figure(figsize=(10, 7.5))  # Adjust the figure size to match the aspect ratio
 plt.imshow(img_resized)
 
-for i, (x1, y1, x2, y2) in enumerate(line_coordinates):
+perpendicular_lines = []
+for i, (x_m, y_m) in enumerate(zip(x_middle, y_middle)):
+    index = (i + 1) % (len(x_middle))
+    perpendicular_lines.append([x_m, y_m, x_middle[index], y_middle[index]])
+
+perpendicular_lines = np.roll(np.array(perpendicular_lines), 1, axis=0)
+
+angles = STARTING_ANGLES
+
+
+for i, ((x1, y1, x2, y2), x_m, y_m, (x1_p, y1_p, x2_p, y2_p)) in enumerate(zip(line_coordinates, x_middle, y_middle, perpendicular_lines)):
     plt.plot([x1, x2], [y1, y2], color='red', linewidth=2)
-    # Add annotation next to the line
     plt.text((x1 + x2) / 2, (y1 + y2) / 2, str(i), color='blue', fontsize=12, ha='center', va='center')
+
+    if i < 1:
+        plt.plot(starting_points[i][0], starting_points[i][1], 'o', color='yellow')
+
+        plt.plot([x1_p, x2_p], [y1_p, y2_p], color='green', linewidth=2)
+        plt.text((x1_p + x2_p) / 2, (y1_p + y2_p) / 2, str(angles[i]), color='white', fontsize=12, ha='center', va='center')
+
 
 
 plt.show()

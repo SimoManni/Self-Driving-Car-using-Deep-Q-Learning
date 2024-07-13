@@ -47,9 +47,37 @@ class SimulationEnvironment:
 
         return np.array(new_state_list), np.array(reward_list), np.array(done_list)
 
+    def get_state(self):
+        new_states = []
+        for car in self.cars:
+            new_states.append(car.get_state())
+        return np.array(new_states)
+
     def reset(self):
         for car in self.cars:
             car.reset()
+
+    # Functions for visualization
+    def draw(self, screen):
+        screen.blit(self.image, (0, 0))
+        screen.blit(self.image, (0, 0))
+        if self.VIS_BARRIERS:
+            self.draw_lines(screen)
+        if self.VIS_CHECKPOINTS:
+            self.draw_checkpoints(screen)
+
+        for car in self.cars:
+            car.draw(screen)
+
+    def draw_lines(self, screen):
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[0], 5)
+        pygame.draw.lines(screen, (255, 0, 0), True, self.contour_points[1], 5)
+        for point in np.vstack(self.contour_points):
+            pygame.draw.circle(screen, (0, 0, 255), point, 5)
+
+    def draw_checkpoints(self, screen):
+        for line in CHECKPOINTS:
+                pygame.draw.line(screen, (255, 0, 0), line[:2], line[2:], 3)
 
 class RacingEnvironment:
     def __init__(self, screen):
