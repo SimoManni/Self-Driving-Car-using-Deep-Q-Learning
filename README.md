@@ -36,9 +36,9 @@ The `Environment` file contains two classes that both simulate a racing environm
 
 
 ### Main 
-The main file runs the loop for a fixed number of episodes as specified in the 'settings.py' file. At a fixed rate, it also simulates the agent in the environment to see how much progress the car has made in the learning process. As anticipated earlier, it was foud through empirical analysis, that when I single car was used, the results generalized poorly to different starting configurations than the one used during training. To tackle this problem, a solution was to run multiple cars in parallel starting from multiple initial configurations, so that the agent could observe different states and hopefully learn a policy that better adapts to never-before seen states. 
+The main file runs the loop for a fixed number of episodes as specified in the `settings.py` file. At a fixed rate, it also simulates the agent in the environment to see the improvement of the cars in the learning process. As anticipated earlier, it was foud through empirical analysis, that when a single car was used, the results generalized poorly to different starting configurations than the one used during training. To tackle this problem, a solution was to run multiple cars in parallel starting from different initial configurations, so that the agent could observe different states and hopefully learn a policy that better adapts to never-before seen states. 
 
-One example of the visualization of the learning simulation can be visualized in the following video: 
+One example of the visualization of the learning simulation can be seen in the following video: 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/9812c99b-a132-42f7-8aca-ce9360e018c9" alt="RL_Car" width="500">
 </p>
